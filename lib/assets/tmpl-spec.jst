@@ -38,12 +38,16 @@ describe('${ describe }', function() {
     %>describe('${ it }', function() {<%
 
         _.forEach(engines, function(engine) {%>
-        it('should be equal `${ it }` by ${ engine.name }', function (<% if (saveHtml) { %>done<% } %>) {
+        it('should be equal `${ it }` by ${ engine.name }', function (done) {
             var bemjson = references['${ it }'].bemjson,
                 expected = references['${ it }'].html,
-                actual = engines['${ engine.name }'].apply(bemjson);
+                actual = engines['${ engine.name }'].apply(bemjson, function(err, actual) {
+                    assertHtml(actual, expected, done);
+                });
 
-            assertHtml(actual, expected);<%
+            if (!engines['${ engine.name }'].isAsync) {
+                assertHtml(actual, expected, done);
+            }<%
             if (saveHtml) {
                 var filename = [it, engine.name, 'html'].join('.'),
                     sep = '\n            ';
@@ -57,10 +61,12 @@ describe('${ describe }', function() {
     }); <% }); %>
 });
 
-function assertHtml(actual, expected) {
+function assertHtml(actual, expected, done) {
     if (htmlDiffer.isEqual(actual, expected)) {
         assert.ok(actual);
+        done();
     } else {
         assert.fail(actual, expected, null, '\n');
+        done('fail');
     }
 }
