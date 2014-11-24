@@ -38,22 +38,33 @@ describe('${ describe }', function() {
     %>describe('${ it }', function() {<%
 
         _.forEach(engines, function(engine) {%>
-        it('should be equal `${ it }` by ${ engine.name }', function (done) {
+        it('should be equal `${ it }` by ${ engine.name }', function (<% if (saveHtml || engine.isAsync) { %>done<% } %>) {
             var bemjson = references['${ it }'].bemjson,
                 expected = references['${ it }'].html,
-                actual = engines['${ engine.name }'].apply(bemjson, function(err, actual) {
-                    assertHtml(actual, expected, done);
-                });
+                actual = engines['${ engine.name }'].apply(bemjson<% if (engine.isAsync) { %>, function (errs, actual) {<% } else { %>);<% } %>
 
-            if (!engines['${ engine.name }'].isAsync) {
-                assertHtml(actual, expected, done);
-            }<%
-            if (saveHtml) {
-                var filename = [it, engine.name, 'html'].join('.'),
-                    sep = '\n            ';
-
-                print(sep + 'fs.writeFile(path.join(__dirname, \'' + filename + '\'), beautifyHtml(actual, beautifyHtmlConfig), done);');
+            <% if (engine.isAsync) {
+                %>if (errs !== null) return done(errs);<%
             } %>
+
+            <% if (saveHtml) {
+                %>var filename = [it, engine.name, 'html'].join('.');<%
+            } %>
+
+            <% if (saveHtml && engine.isAsync) {
+                %>assertHtmlAsync(actual, expected, function (err, res) {
+                    saveHtmlFile(filename, actual, done);
+                });<%
+            } else if (engine.isAsync) {
+                %>assertHtmlAsync(actual, expected, done);<%
+            } else {
+                %>assertHtml(actual, expected);<%
+                if (saveHtml) {
+                    %>saveHtmlFile(filename, actual, done);<%
+                }
+            } %>
+
+            <% if (engine.isAsync) { %>});<% } %>
         });<%
         });
 
@@ -70,3 +81,16 @@ function assertHtml(actual, expected, done) {
         done('fail');
     }
 }
+
+function assertHtmlAsync(actual, expected, done) {
+    if (htmlDiffer.isEqual(actual, expected)) {
+        done(null);
+    } else {
+        assert.fail(actual, expected, null, '\n');
+    }
+}
+<% if (saveHtml) { %>
+function saveHtmlFile(filename, actual, done) {
+    fs.writeFile(path.join(__dirname, filename), beautifyHtml(actual, beautifyHtmlConfig), done);
+}
+<% } %>
