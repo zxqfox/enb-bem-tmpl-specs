@@ -72,13 +72,11 @@ describe('${ describe }', function() {
     }); <% }); %>
 });
 
-function assertHtml(actual, expected, done) {
+function assertHtml(actual, expected) {
     if (htmlDiffer.isEqual(actual, expected)) {
         assert.ok(actual);
-        done();
     } else {
         assert.fail(actual, expected, null, '\n');
-        done('fail');
     }
 }
 
